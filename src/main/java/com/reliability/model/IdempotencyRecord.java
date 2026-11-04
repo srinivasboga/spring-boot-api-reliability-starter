@@ -1,4 +1,6 @@
 package com.reliability.model;
 
-public class IdempotencyRecord {
-}
+public record IdempotencyRecord(
+        String fingerprint,
+        PaymentResponse response
+) {}
