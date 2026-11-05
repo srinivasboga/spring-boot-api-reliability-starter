@@ -6,6 +6,7 @@ import com.reliability.store.InMemoryIdempotencyStore;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -13,10 +14,11 @@ class IdempotencyServiceTest {
 
     private final IdempotencyService service =
             new IdempotencyService(
-                    new InMemoryIdempotencyStore(),
+                    new InMemoryIdempotencyStore(
+                            Duration.ofHours(24)
+                    ),
                     new RequestFingerprint()
             );
-
     @Test
     void sameKeyAndSamePayloadShouldReturnOriginalResponse() {
 

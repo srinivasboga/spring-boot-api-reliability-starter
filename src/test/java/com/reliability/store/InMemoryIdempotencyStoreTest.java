@@ -6,6 +6,7 @@ import com.reliability.model.PaymentResponse;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -22,7 +23,9 @@ class InMemoryIdempotencyStoreTest {
  @Test
  void sameKeyReturnsOriginalResultAndExecutesOperationOnlyOnce() {
 
-  var store = new InMemoryIdempotencyStore();
+  var store = new InMemoryIdempotencyStore(
+          Duration.ofHours(24)
+  );
   AtomicInteger executions = new AtomicInteger();
 
   var first = store.executeOnce("key-123", () -> {
@@ -58,7 +61,9 @@ class InMemoryIdempotencyStoreTest {
  @Test
  void differentKeysAreIndependent() {
 
-  var store = new InMemoryIdempotencyStore();
+  var store = new InMemoryIdempotencyStore(
+          Duration.ofHours(24)
+  );
   AtomicInteger executions = new AtomicInteger();
 
   store.executeOnce("key-a", () -> {
@@ -92,7 +97,9 @@ class InMemoryIdempotencyStoreTest {
  void shouldExecuteOperationOnlyOnceFor100ConcurrentRequests()
          throws Exception {
 
-  var store = new InMemoryIdempotencyStore();
+  var store = new InMemoryIdempotencyStore(
+          Duration.ofHours(24)
+  );
 
   int numberOfThreads = 100;
 
