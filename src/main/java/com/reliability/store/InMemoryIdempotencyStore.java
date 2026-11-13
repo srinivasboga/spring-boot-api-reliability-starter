@@ -2,6 +2,7 @@
 package com.reliability.store;
 
 import com.reliability.model.IdempotencyRecord;
+import com.reliability.model.IdempotencyExecution;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -9,6 +10,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 
 @Component
@@ -33,24 +35,27 @@ public class InMemoryIdempotencyStore implements IdempotencyStore {
  }
 
  @Override
- public IdempotencyRecord executeOnce(
+ public IdempotencyExecution executeOnceWithMetadata(
          String key,
          Supplier<IdempotencyRecord> operation
  ) {
+  AtomicBoolean replayed = new AtomicBoolean(false);
 
   StoredRecord stored = results.compute(key, (ignored, existing) -> {
 
    if (existing != null && !existing.isExpired()) {
+    replayed.set(true);
     return existing;
    }
 
+   replayed.set(false);
    return new StoredRecord(
            operation.get(),
            Instant.now().plus(ttl)
    );
   });
 
-  return stored.record();
+  return new IdempotencyExecution(stored.record(), replayed.get());
  }
 
  @Override

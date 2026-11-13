@@ -1,6 +1,7 @@
 package com.reliability.service;
 
 import com.reliability.model.IdempotencyRecord;
+import com.reliability.model.IdempotencyExecution;
 import com.reliability.model.PaymentRequest;
 import com.reliability.model.PaymentResponse;
 import com.reliability.store.IdempotencyStore;
@@ -24,15 +25,23 @@ public class IdempotencyService {
          String idempotencyKey,
          PaymentRequest request
  ) {
+  return processPaymentWithMetadata(idempotencyKey, request).response();
+ }
+
+ public PaymentResult processPaymentWithMetadata(
+         String idempotencyKey,
+         PaymentRequest request
+ ) {
   String fingerprint = fingerprintGenerator.generate(request);
 
-  IdempotencyRecord record = store.executeOnce(
+  IdempotencyExecution execution = store.executeOnceWithMetadata(
           idempotencyKey,
           () -> new IdempotencyRecord(
                   fingerprint,
                   PaymentResponse.approved(request)
           )
   );
+  IdempotencyRecord record = execution.record();
 
   if (!record.fingerprint().equals(fingerprint)) {
    throw new IdempotencyConflictException(
@@ -40,6 +49,6 @@ public class IdempotencyService {
    );
   }
 
-  return record.response();
+  return new PaymentResult(record.response(), execution.replayed());
  }
 }

@@ -2,6 +2,7 @@
 package com.reliability.store;
 
 import com.reliability.model.IdempotencyRecord;
+import com.reliability.model.IdempotencyExecution;
 import com.reliability.model.PaymentResponse;
 import org.junit.jupiter.api.Test;
 
@@ -28,7 +29,7 @@ class InMemoryIdempotencyStoreTest {
   );
   AtomicInteger executions = new AtomicInteger();
 
-  var first = store.executeOnce("key-123", () -> {
+  var first = store.executeOnceWithMetadata("key-123", () -> {
    executions.incrementAndGet();
 
    var response = new PaymentResponse(
@@ -41,7 +42,7 @@ class InMemoryIdempotencyStoreTest {
    return new IdempotencyRecord("fingerprint-1", response);
   });
 
-  var second = store.executeOnce("key-123", () -> {
+  var second = store.executeOnceWithMetadata("key-123", () -> {
    executions.incrementAndGet();
 
    var response = new PaymentResponse(
@@ -54,7 +55,9 @@ class InMemoryIdempotencyStoreTest {
    return new IdempotencyRecord("fingerprint-1", response);
   });
 
-  assertSame(first, second);
+  assertSame(first.record(), second.record());
+  assertFalse(first.replayed());
+  assertTrue(second.replayed());
   assertEquals(1, executions.get());
  }
 
@@ -114,17 +117,17 @@ class InMemoryIdempotencyStoreTest {
   CountDownLatch start =
           new CountDownLatch(1);
 
-  List<Future<IdempotencyRecord>> futures = new ArrayList<>();
+  List<Future<IdempotencyExecution>> futures = new ArrayList<>();
 
   try {
    for (int i = 0; i < numberOfThreads; i++) {
 
-    Future<IdempotencyRecord> future = executor.submit(() -> {
+    Future<IdempotencyExecution> future = executor.submit(() -> {
 
      ready.countDown();
      start.await();
 
-     return store.executeOnce("payment-123", () -> {
+     return store.executeOnceWithMetadata("payment-123", () -> {
 
       executionCount.incrementAndGet();
 
@@ -154,18 +157,21 @@ class InMemoryIdempotencyStoreTest {
 
    start.countDown();
 
-   List<IdempotencyRecord> records = new ArrayList<>();
+   List<IdempotencyExecution> records = new ArrayList<>();
 
-   for (Future<IdempotencyRecord> future : futures) {
+   for (Future<IdempotencyExecution> future : futures) {
     records.add(future.get(10, TimeUnit.SECONDS));
    }
 
    assertEquals(1, executionCount.get());
+   assertEquals(1, records.stream().filter(record -> !record.replayed()).count());
+   assertEquals(numberOfThreads - 1,
+           records.stream().filter(IdempotencyExecution::replayed).count());
 
    assertTrue(
            records.stream()
                    .allMatch(record ->
-                           record.response().paymentId()
+                           record.record().response().paymentId()
                                    .equals("payment-001"))
    );
 

@@ -2,6 +2,7 @@ package com.reliability.controller;
 import com.reliability.model.PaymentRequest;
 import com.reliability.model.PaymentResponse;
 import com.reliability.service.IdempotencyService;
+import com.reliability.service.PaymentResult;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,9 @@ public class PaymentController {
            "Idempotency-Key header must not be blank"
    );
   }
-  return ResponseEntity.status(HttpStatus.CREATED).body(service.processPayment(key, request));
+  PaymentResult result = service.processPaymentWithMetadata(key, request);
+  return ResponseEntity.status(HttpStatus.CREATED)
+          .header("Idempotency-Replayed", Boolean.toString(result.replayed()))
+          .body(result.response());
  }
 }

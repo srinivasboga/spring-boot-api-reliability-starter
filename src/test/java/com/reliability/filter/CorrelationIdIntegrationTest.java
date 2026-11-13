@@ -35,6 +35,7 @@ class CorrelationIdIntegrationTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
+                .andExpect(header().string("Idempotency-Replayed", "false"))
                 .andExpect(header().string(
                         CorrelationIdContext.HEADER_NAME,
                         "integration-test-123"
@@ -59,6 +60,29 @@ class CorrelationIdIntegrationTest {
                         CorrelationIdContext.HEADER_NAME,
                         matchesPattern("^[0-9a-fA-F-]{36}$")
                 ));
+    }
+
+    @Test
+    void repeatedPaymentShouldBeMarkedAsReplayed()
+            throws Exception {
+
+        String requestBody = """
+                {"orderId":"ORDER-107","amount":99}
+                """;
+
+        mockMvc.perform(post("/api/payments")
+                        .header("Idempotency-Key", "replay-indicator-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Idempotency-Replayed", "false"));
+
+        mockMvc.perform(post("/api/payments")
+                        .header("Idempotency-Key", "replay-indicator-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Idempotency-Replayed", "true"));
     }
 
     @Test
