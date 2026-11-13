@@ -5,8 +5,12 @@ A learning-driven open-source project exploring reusable reliability patterns fo
 - Spring Boot 3.5.6
 - Maven
 
-## First feature: idempotent payment endpoint
-`POST /api/payments` accepts an `Idempotency-Key` header. Repeating a request with the same key returns the original response rather than executing the operation again.
+## Features
+- `POST /api/payments` accepts an `Idempotency-Key` header. Repeating the same request with the same key returns the original response; reusing a key with a different payload returns `409 Conflict`.
+- Idempotency records expire after a configurable TTL (`reliability.idempotency.ttl`, default `24h`).
+- Request payloads are fingerprinted with SHA-256 so semantically different requests cannot reuse a key.
+- Correlation IDs are accepted or generated for every request, returned in `X-Correlation-Id`, and included in application logs.
+- API errors use RFC Problem Details responses with stable error codes and the request correlation ID. Validation errors include field-level details.
 
 ## Run
 Requirements: JDK 17+ and Maven 3.9+.
@@ -27,9 +31,9 @@ Repeat the request with the same key and compare `paymentId`.
 - `store`: storage abstraction and in-memory adapter
 - `model`: request and response records
 
-`ConcurrentHashMap.computeIfAbsent` ensures same-key computation is atomic within one JVM.
+`ConcurrentHashMap.compute` ensures same-key computation and TTL replacement are atomic within one JVM.
 
 ## Limitations
-This is a first learning milestone, not production-ready payment infrastructure. Data is lost on restart; separate instances do not share keys; expiry and request-payload fingerprint validation are not implemented. A real payment integration must coordinate idempotency with the payment provider or durable transaction storage.
+This is a learning project, not production-ready payment infrastructure. Idempotency state is held in memory, so it is lost on restart and is not shared across instances. A real payment integration must coordinate idempotency with the payment provider or durable transaction storage.
 
-Next: payload fingerprint validation, TTL, Redis adapter, concurrency tests and Spring Boot auto-configuration.
+Next: Redis-backed storage and Spring Boot auto-configuration.

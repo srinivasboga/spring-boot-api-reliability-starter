@@ -14,7 +14,11 @@ public class PaymentController {
  @PostMapping
  public ResponseEntity<PaymentResponse> create(
   @RequestHeader("Idempotency-Key") String key, @Valid @RequestBody PaymentRequest request) {
-  if (key.isBlank()) return ResponseEntity.badRequest().build();
+  if (key.isBlank()) {
+   throw new InvalidIdempotencyKeyException(
+           "Idempotency-Key header must not be blank"
+   );
+  }
   return ResponseEntity.status(HttpStatus.CREATED).body(service.processPayment(key, request));
  }
 }
