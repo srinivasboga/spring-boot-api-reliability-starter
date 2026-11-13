@@ -13,7 +13,7 @@ import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(properties = "reliability.rate-limit.enabled=false")
 @AutoConfigureMockMvc
 class CorrelationIdIntegrationTest {
 
